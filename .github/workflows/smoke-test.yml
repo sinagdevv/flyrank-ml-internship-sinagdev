@@ -67,12 +67,26 @@ jobs:
               pass
           final = url.startswith("https://")
           bad = []
+          optional_skeletons = {
+              "work/notebooks/w03_feature_leakage_check.ipynb",
+              "work/notebooks/w04_signal_audit.ipynb",
+          }
+          placeholder = "# This cell is for CODE (numbers, a query, a check).\n# Write your text answer in the cell ABOVE this one — typing sentences here breaks Run All.\n"
           for p in sorted(glob.glob("work/notebooks/*.ipynb")):
               try:
                   nb = json.load(open(p))
               except Exception:
                   continue
               code = [c for c in nb.get("cells", []) if c.get("cell_type") == "code"]
+              is_known_placeholder = (
+                  p.replace("\\", "/") in optional_skeletons
+                  and code
+                  and all("".join(c.get("source", [])) == placeholder for c in code)
+                  and not any(c.get("outputs") for c in code)
+              )
+              if is_known_placeholder:
+                  print(f"{p} is an untouched optional skeleton; exempted explicitly.")
+                  continue
               src = sum(len("".join(c.get("source", []))) for c in code)
               has_out = any(c.get("outputs") for c in code)
               if code and src > 200 and not has_out:
